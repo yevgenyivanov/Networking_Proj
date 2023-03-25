@@ -37,10 +37,10 @@ As we clearly see, the GET is at the start of the request itself. This allows us
 '''
 
 # RUDP
-def rudp_httpsender(client_socket: socket.socket, client_address: tuple[str, int], fileserverip: str, fileserverport: int) -> None:
+def rudp_httpsender(server_socket: socket.socket, client_address: tuple[str, int], fileserverip: str, fileserverport: int, message: bytes) -> None:
     print(f"{client_address[0]}:{client_address[1]} is requesting file by rudp")
     # process client request by turning it into a string
-    processed_request = client_socket.recv(1024).decode('utf-8')
+    processed_request = message.decode('utf-8')
     if 'RUDP_GET' in processed_request:
         x = processed_request.split()
         print("Printing RUDP_GET request:")
@@ -54,11 +54,11 @@ def rudp_httpsender(client_socket: socket.socket, client_address: tuple[str, int
         
         response = f"302 /{file} HTTP/1.1 \r\nHost: {redirected_url} \r\nConnection: close\r\n\r\n"
         
-        client_socket.sendall(response.encode('utf-8'))
+        server_socket.sendto(response.encode('utf-8'), client_address)
         print("response sent")
-        client_socket.close()
+        server_socket.close()
         print("socket closed")
-        return
+        
     return
 
 
@@ -88,7 +88,7 @@ def tcp_httpsender(client_socket: socket.socket, client_address: tuple[str, int]
         print("response sent")
         client_socket.close()
         print("socket closed")
-        return
+    return
 
 # default server usage
 def server(host: str, port: int, fileserverip: str, fileserverport: int, protocol: str) -> None:
@@ -142,7 +142,7 @@ def server(host: str, port: int, fileserverip: str, fileserverport: int, protoco
             server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         
             server_socket.bind((host, port))
-            server_socket.listen()
+            # server_socket.listen()
             
 
             threads = []
@@ -151,17 +151,23 @@ def server(host: str, port: int, fileserverip: str, fileserverport: int, protoco
             while True:
                 try:
                     # Establish connection with client.
-                    client_socket, address = server_socket.accept() 
-                    
 
+                    # need to fix: recvfrom() receives from the socket information but doesn't know how to process it
+                    bytesAddressPair = server_socket.recvfrom(1024)
+                    message = bytesAddressPair[0]
+                    client_address = bytesAddressPair[1]
+                    print(f"accepeted connection from {client_address[0]}:{client_address[1]}")
+                    print(f"message: {message}")
+                    
                     # Create a new thread to handle the client request
                     thread = threading.Thread(target=rudp_httpsender, args=(
-                        client_socket, address, fileserverip, fileserverport))
+                        server_socket, client_address, fileserverip, fileserverport, message))
                     thread.start()
                     threads.append(thread)
                 except KeyboardInterrupt:
                     print("Shutting down...")
                     break
+                    return
             return
     # Note: context manager ('with' keyword) closes the socket when the block is exited
     

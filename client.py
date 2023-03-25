@@ -144,8 +144,8 @@ def client(server_address: tuple[str, int], filename: str, protocol: str) -> Non
 
                 request = f"RUDP_GET {file_url} HTTP/1.1 \r\nHost: {server_address[0]} \r\nConnection: open \r\n\r\n"
                 # send initial GET
-                client_socket.sendall(request.encode('utf-8'))
-                print("sent get request")
+                client_socket.send(request.encode('utf-8'))
+                print("sent rudp_get request")
                 # receive GET response
                 response = client_socket.recv(1024).decode('utf-8')
                 print("received response")
