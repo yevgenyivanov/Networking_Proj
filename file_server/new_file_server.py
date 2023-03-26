@@ -10,11 +10,11 @@ import argparse
 import http.server
 import requests
 DEFAULT_SERVER_HOST = '127.0.0.2'
-DEFAULT_SERVER_PORT = 8002
+DEFAULT_SERVER_PORT = 2060
 DEFAULT_PROTCOL = "TCP"
 
-def exponential_growth()
 
+# conver file a bytes array
 def file_to_bytesArray_func(os_filesize: int, file_inbytes: bytes):
     elems_in_filedata_array = os_filesize / 1024
     # calculate remainder of the division above
@@ -35,19 +35,35 @@ def file_to_bytesArray_func(os_filesize: int, file_inbytes: bytes):
         # print("i is: ", i)
     return file_bytes_array
 
+# congestion_control
+# exponential growth for packet sending
+def exponential_growth(previous_max: int, exponential_growth_rate: int):
+     current_min = previous_max
+     while True:
+          yield(current_min, current_min*exponential_growth_rate )
+          current_min *=exponential_growth_rate
+
+
+
 def congestion_control(client_socket: socket.socket, client_address: tuple[str, int], file_size: int, file_bytes_array):
     total_elems = len(file_bytes_array)
     counter=1
     print(len(file_bytes_array))
     # send i of bytes, encode a bytestream of (i)*1024):((2*(i+1))*1024)
-    for i in range(len(file_bytes_array)):
-        
-        curr_byte_stream = file_bytes_array[
-            (counter*i*1024):
-            (i+1)*1024]
-        # curr_stream_number = 
-        
+    for i, (range_start, range_end) in enumerate(exponential_growth(1,2)):
+        if i== 5:
+            print(f"               Bytes_Range_Start: {range_start}, Bytes_Range_End: {range_end}")
+            print(f"Iteration {i}, Bytes_Sent_Start: {range_start*1024}, Bytes_Sent_End: {1024*(62)}") # 1024*62 = 
+            print()
+            break
+    
+        print(f"               Bytes_Range_Start: {range_start}, Bytes_Range_End: {range_end}")
+        print(f"Iteration {i}, Bytes_Sent_Start: {(range_start)*1024}, Bytes_Sent_End: {1024*(range_end)}")
+        print()
+    
     return
+
+
 
 # RUDP
 def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], message: bytes) -> None:
@@ -76,15 +92,15 @@ def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], mes
             TODO
             Congestion Control:
              Exponential growth in sending - in order to send exponential data size, (we'll set arbitrary value of 4096bytes)
-              combine amount of data_elements until we reach 64,512bytes, exponentaily:
+              combine amount of data_elements until we reach 63,488bytes, exponentaily:
               if we sent 1024bytes, received an ACK next time we will send 2048bytes, then 4096bytes etc.
               (the previous amount of bytes sent X2)
-              This will lead to a maximum of 1024*63 = 64512bytes being transferred at once
+              This will lead to a maximum of 1024*62 = 63,488bytes being transferred at once
               (Note: Although the maximum UDP packet size is 65,507 for ipv4 we round it down)
               
-             Linear decrease in sending - reduce the amount of data from 64,512bytes by 2048bytes for each ACK
+             Linear decrease in sending - reduce the amount of data from 63,488bytes by 2048bytes for each ACK
               so if we reached maximum UDP threshold we keep reducing amound of bytes sent.
-              from 64,512 to 62,464 to 62,464 etc. all the way to 3/4 of 64,512 = 48,384bytes being sent.
+              from 63,488 to 62,464 to 62,464 etc. all the way to 3/4 of 63,488 = 47,616bytes being sent.
               Then re-enter the loop of adding 1024bytes Exponentially
             
             TODO
@@ -95,7 +111,7 @@ def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], mes
 
 
 
-        if get_file_from_processed_request == 'file.txt':
+        if get_file_from_processed_request == 'file_rudp.txt':
             
             
             file_size = None
@@ -125,7 +141,7 @@ def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], mes
 
 
 
-        if get_file_from_processed_request == 'file2.txt':
+        if get_file_from_processed_request == 'file2_rudp.txt':
             print("processed response from ")
             
             file_size = None
@@ -143,7 +159,7 @@ def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], mes
             return
 
         
-        if get_file_from_processed_request == 'image_1.jpg':
+        if get_file_from_processed_request == 'image_rudp.jpg':
             print("processed response from ")
             
             file_size = None
@@ -192,7 +208,7 @@ def tcp_send(client_socket: socket.socket, client_address: tuple[str, int]) -> N
         # checking the if a file that's requested is among the hosted_files/
         print("requested file is: ", get_file_from_processed_request)
 
-        if get_file_from_processed_request == 'file.txt':
+        if get_file_from_processed_request == 'file_tcp.txt':
             print("processed response from ")
             
             file_size = None
@@ -210,7 +226,7 @@ def tcp_send(client_socket: socket.socket, client_address: tuple[str, int]) -> N
             return
 
         
-        if get_file_from_processed_request == 'file2.txt':
+        if get_file_from_processed_request == 'file2_tcp.txt':
             print("processed response from ")
             
             file_size = None
@@ -228,7 +244,7 @@ def tcp_send(client_socket: socket.socket, client_address: tuple[str, int]) -> N
             return
 
         
-        if get_file_from_processed_request == 'image_1.jpg':
+        if get_file_from_processed_request == 'image_tcp.jpg':
             print("processed response from ")
             
             file_size = None
