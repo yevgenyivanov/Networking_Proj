@@ -31,7 +31,7 @@ def file_to_bytesArray_func(os_filesize: int, file_inbytes: bytes):
         file_bytes_array.append(
             file_inbytes[i*1024:(i+1)*1024]
         )
-        print(file_bytes_array[i])
+        # print(file_bytes_array[i])
         # print("i is: ", i)
     return file_bytes_array
 
@@ -46,19 +46,40 @@ def exponential_growth(previous_max: int, exponential_growth_rate: int):
 
 
 def congestion_control(client_socket: socket.socket, client_address: tuple[str, int], file_size: int, file_bytes_array):
+    # amount of 1024 bytes elements in file_bytes_array
     total_elems = len(file_bytes_array)
-    counter=1
-    print(len(file_bytes_array))
-    # send i of bytes, encode a bytestream of (i)*1024):((2*(i+1))*1024)
+    max_bytes_amount = 0
+    
+    
+    client_socket.send(str(total_elems).encode('utf-8'))
+    print("sent total elems: ", total_elems)
+    # receive ack
+    send_response = client_socket.recv(1024).decode('utf-8')
+    if "SEND_FILE_BYTES_ARRAY" in send_response:    
+    # send first 1024bytess
+        client_socket.send(file_bytes_array[0:1])
+        send_response = client_socket.recv(1024).decode('utf-8')
+        
+    # i will be packet number out of total_elems
     for i, (range_start, range_end) in enumerate(exponential_growth(1,2)):
-        if i== 5:
+        # break condition for sending all packets before reaching max congestion window size
+        if i == total_elems:
             print(f"               Bytes_Range_Start: {range_start}, Bytes_Range_End: {range_end}")
-            print(f"Iteration {i}, Bytes_Sent_Start: {range_start*1024}, Bytes_Sent_End: {1024*(62)}") # 1024*62 = 
+            print(f"Iteration {i+1}, Bytes_Sent_Start: {range_start*1024}, Bytes_Sent_End: {1024*(range_end)}") # 1024*62 = 
+            max_bytes_amount = 62
             print()
             break
-    
+        # break condition for reaching max congestion window size
+        if i == 5:
+            # sent 32-62 array elements of file_bytes_array
+            print(f"               Bytes_Range_Start: {range_start}, Bytes_Range_End: {62}")
+            print(f"Iteration {i+1}, Bytes_Sent_Start: {range_start*1024}, Bytes_Sent_End: {1024*(62)}") # 1024*62 = 
+            max_bytes_amount = 62
+            print()
+            break
+        # continue iterating till max congestion window size
         print(f"               Bytes_Range_Start: {range_start}, Bytes_Range_End: {range_end}")
-        print(f"Iteration {i}, Bytes_Sent_Start: {(range_start)*1024}, Bytes_Sent_End: {1024*(range_end)}")
+        print(f"Iteration {i+1}, Bytes_Sent_Start: {(range_start)*1024}, Bytes_Sent_End: {1024*(range_end)}")
         print()
     
     return
@@ -100,7 +121,7 @@ def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], mes
               
              Linear decrease in sending - reduce the amount of data from 63,488bytes by 2048bytes for each ACK
               so if we reached maximum UDP threshold we keep reducing amound of bytes sent.
-              from 63,488 to 62,464 to 62,464 etc. all the way to 3/4 of 63,488 = 47,616bytes being sent.
+              from 63,488 to  to  etc. all the way to 3/4 of 63,488 = 47,616bytes being sent.
               Then re-enter the loop of adding 1024bytes Exponentially
             
             TODO
@@ -111,7 +132,7 @@ def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], mes
 
 
 
-        if get_file_from_processed_request == 'file_rudp.txt':
+        if get_file_from_processed_request == 'file_udp.txt':
             
             
             file_size = None
@@ -128,8 +149,8 @@ def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], mes
                     
             
             # send file size using sendto
-            # client_socket.sendto(str(file_size).encode('utf-8'), client_address)
-            # print("data size sent")
+            client_socket.sendto(str(file_size).encode('utf-8'), client_address)
+            print("data size sent")
             congestion_control(client_socket, client_address, file_size, file_bytes_array)
 
             # client_socket.sendall(response)
@@ -141,7 +162,7 @@ def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], mes
 
 
 
-        if get_file_from_processed_request == 'file2_rudp.txt':
+        if get_file_from_processed_request == 'file2_udp.txt':
             print("processed response from ")
             
             file_size = None
@@ -159,7 +180,7 @@ def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], mes
             return
 
         
-        if get_file_from_processed_request == 'image_rudp.jpg':
+        if get_file_from_processed_request == 'image_udp.jpg':
             print("processed response from ")
             
             file_size = None
@@ -178,8 +199,8 @@ def rudp_send(client_socket: socket.socket, client_address: tuple[str, int], mes
             return
 
         else:
-            response = ("404_NOT_FOUND").encode('utf-8')
-            client_socket.send(response)
+            response = ("404_NOT_FOUND")
+            client_socket.sendto(response.encode('utf-8'), client_address)
             client_socket.close()
 
         return

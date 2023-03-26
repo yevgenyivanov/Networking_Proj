@@ -19,7 +19,18 @@ dns_serverip = "127.0.0.1"
 REDIRECT_SERVER_IP = "127.0.0.1"
 REDIRECT_SERVER_PORT = 2746
 clientip = "127.0.0.1"
-clientport = 20602
+clientport = 2060
+
+
+
+# exponential growth for packet sending
+def exponential_growth(previous_max: int, exponential_growth_rate: int):
+    current_min = previous_max
+    while True:
+        yield (current_min, current_min * exponential_growth_rate)
+        current_min *= exponential_growth_rate
+
+
 
 
 def get_iface():
@@ -142,35 +153,75 @@ def client(server_address: tuple[str, int], filename: str, protocol: str, url: s
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as new_client_socket:
                 new_client_socket.connect(server_address)
 
-                # server_address = (new_host, int(new_port))
-
-                # client_socket.connect((new_host, new_port))
                 print("socket reconntected to new server")
-                # send GET_FILE request
+                # send RUDP_GET_FILE request
                 request = f"RUDP_GET_FILE {url} HTTP/1.1 \r\nHost: {server_address[0]} \r\nConnection: open \r\n\r\n"
                 print("RUDP_GET_FILE request: ", request)
-
                 new_client_socket.send(request.encode('utf-8'))
 
                 # receive file_size in bytes
-                file_size = new_client_socket.recv(
-                    8192).decode('utf-8')
+                file_size = new_client_socket.recv(1024).decode('utf-8')
                 print("file size is: ", file_size)
                 print()
-                file_size_tracker = 0
-                response = b''
-                while file_size_tracker <= int(file_size):
-                    response = response + new_client_socket.recv(8192)
-                    print("sizeof response: ", int(
-                        sys.getsizeof(response)))
-                    file_size_tracker = int(sys.getsizeof(response))
+                # file_size_tracker = 0
+                
+                # receive amount of packets that we'll receive
+                new_client_socket.send("SEND_ELEMS".encode('utf-8'))
+                total_elems_response = new_client_socket.recv(1024).decode('utf-8')
+                print("Total amount of elements in file_bytes_array: ", total_elems_response)
+
+                # send ok to receive bytes of file
+                new_client_socket.send("SEND_FILE_BYTES_ARRAY".encode('utf-8'))
+                
+                # Define Empty array for bytestream
+                file_bytes_array = [None]* int(total_elems_response)
+
+                # for loop to receive bytes
+                
+                for i in range(int(total_elems_response)):
+                    
+                    # recieve bytes of data up to 2^i * 1024
+                    try:
+                        new_client_socket.settimeout(3)
+                        bytes_response = new_client_socket.recv(1024*(pow(2,i)))
+                    except TimeoutError:
+                        print("socket timed out, from no response or file complete transfer")
+                        break
+                
+                    if bytes_response == None:
+                        break
+                    # bytes_response = new_client_socket.recv(1024*(pow(2,i)))
+                    
+                    # bytes_from_response = bytes_response.split(' ')
+                    print()
+                    file_bytes_array[i] = bytes_response
+                    print("appended bytes")
+                    if (i)==int(total_elems_response) - 1:
+                        print("received all file exiting")
+                counter = 0
+
+                byte_stream = b''
+                while(counter<int(total_elems_response)):
+                    byte_stream += file_bytes_array[counter]
+                    counter+=1
 
                 saved_filename = filename.split('.')[0] + '_saved'
                 saved_filename_extenstion = filename.split('.')[1]
                 with open(f'{saved_filename}.{saved_filename_extenstion}', 'wb') as file:
-                    file.write(response)
-                    print("file written correctly")
+                    file.write(byte_stream)
+                        
+                    
 
+                # while file_size_tracker <= int(file_size):
+                #     response = response + new_client_socket.recv(8192)
+                #     print("sizeof response: ", int(
+                #         sys.getsizeof(response)))
+                #     file_size_tracker = int(sys.getsizeof(response))
+
+
+
+
+                
                 print("file received(finally!)")
                 return
 
