@@ -9,6 +9,7 @@ import threading
 import argparse
 import http.server
 import requests
+import time
 
 DEFAULT_SERVER_HOST = '127.0.0.2'
 DEFAULT_SERVER_PORT = 2060
@@ -59,6 +60,7 @@ def tcp_send(client_socket: socket.socket, client_address: tuple[str, int]) -> N
             # send file size
             client_socket.sendall(str(file_size).encode('utf-8'))
             print("data size sent")
+            time.sleep(1)
             client_socket.sendall(response)
             client_socket.close()
             print("socket closed")
